@@ -14,10 +14,9 @@ pub struct GomokuState {
     pub status: RegisterView<Option<GameStatus>>,
     pub steps: RegisterView<Vec<Step>>,
 	pub last_move: RegisterView<Option<Step>>,
-	pub log: RegisterView<Option<String>>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Enum, Default)]
 pub enum GameStatus {
     #[default]
     NotStarted,

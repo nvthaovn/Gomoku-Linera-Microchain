@@ -22,7 +22,20 @@ export class LineraClient{
 		this._backend = await this._client.frontend().application(app_id);
 		this.connected = true;
 		this._triggerEvent("connected");
-		this.log("Connected!!!");	
+		
+		
+		this._client.onNotification(async (note) => {
+			this.log('🔔 Notification:', note);
+			this.log("🔔  Reason keys:", Object.keys(note.reason));
+			this.log("🔔  Payload:", note.reason);
+			this._triggerEvent("Notification");
+			if (note.reason.NewBlock) {
+				this._triggerEvent("NewBlock"); //state change (by frontend mutation call or crosschain message)
+			}
+			if (note.reason.NewIncomingBundle) {
+				this._triggerEvent("NewIncomingBundle"); //recive a crosschain call from other microchain
+			}
+		});
 		
 	}
 	
@@ -35,6 +48,10 @@ export class LineraClient{
 	on(event_name, callback) {
 		const list_events = [ //  supported event
 			"connected",
+			"Notification", //any notifycation
+			"NewBlock", //state change 
+			"NewIncomingBundle", //recive a crosschain call from other microchain
+			"query", //call a query
 		];
 
 		if (typeof callback !== "function") {
@@ -67,11 +84,10 @@ export class LineraClient{
 	
 	//Make a graph query to Linera network
 	async query(app_id,query_string){
-		console.log("xxx-startQuery:",query_string);
+		console.log("startAQuery:",query_string);
 		if(this.connected){
-			const backend = this._backend;//await this._client.frontend().application(app_id);
-			const response = await backend.query(`{ "query": "${query_string}" }`);
-			console.log("xxx-queryResult:",response);
+			const backend = this._backend;
+			const response = await backend.query(JSON.stringify({ query: `${query_string}` }));
 			return JSON.parse(response);
 		}
 		throw new Error("Linera Client is not connected to the network");
@@ -80,7 +96,6 @@ export class LineraClient{
 	// trigger event callback
 	_triggerEvent(event_name) {
 		this.log("Web3 event:", event_name);
-
 		if (event_name in this._callback_handle) {
 			const callbacks = this._callback_handle[event_name];
 

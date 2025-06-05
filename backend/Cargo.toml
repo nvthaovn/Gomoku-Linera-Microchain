@@ -9,10 +9,12 @@ linera-sdk = "0.14.1"
 futures = { version = "0.3 "}
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
+log = "0.4"
 
 [dev-dependencies]
 linera-sdk = { version = "0.14.1", features = ["test", "wasmer"] }
-tokio = { version = "1.40", features = ["rt", "sync"] }
+linera-base = "0.14.1"
+tokio = { version = "1.40", features = ["rt", "sync", "macros"] }
 
 [[bin]]
 name = "gomoku_contract"

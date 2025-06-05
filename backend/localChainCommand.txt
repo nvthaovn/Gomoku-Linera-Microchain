@@ -1,0 +1,17 @@
+//Local chain guild
+
+FAUCET_URL=http://localhost:8080
+// run up local chain
+export RUST_LOG="warn,linera_execution::wasm=trace"
+linera net up --with-faucet --faucet-port 8080
+//remove old wallet
+rm -rf ~/.config/linera/*
+//create new wallet with local chain
+linera wallet init --with-new-chain --faucet $FAUCET_URL
+
+
+// create new wallet with Public testnet babbage
+linera wallet init --with-new-chain --faucet https://faucet.testnet-babbage.linera.net
+
+//deploy application
+linera publish-and-create target/wasm32-unknown-unknown/release/gomoku_{contract,service}.wasm

@@ -1,5 +1,4 @@
-export class SceneBase extends Phaser.Scene
-{
+export class SceneBase extends Phaser.Scene {
     constructor(config) {
         super(config);
     }
@@ -55,7 +54,7 @@ export class SceneBase extends Phaser.Scene
 
         // Small ticks (every 10px)
         this._rulerOverlay.lineStyle(1, color, 1);
-        let minDistance = 10; //px
+        let minDistance = 10; // px
 
         // Horizontal ruler
         for (let i = 0; i <= barWidth; i++) {
@@ -191,7 +190,7 @@ export class SceneBase extends Phaser.Scene
         const objects = this.children.list
             .filter(obj => typeof obj.depth === 'number' && obj.visible !== false);
 
-        // 2. Hide all
+        // 2. Hide all objects
         objects.forEach(obj => {
             obj.setVisible(false);
         });
@@ -199,9 +198,9 @@ export class SceneBase extends Phaser.Scene
         // 3. Sort by depth ascending
         objects.sort((a, b) => a.depth - b.depth);
 
-        // 4. Show group by group every 5 seconds
+        // 4. Show group by group every 1 second
         let index = 0;
-        const interval = 1000; // 1 second
+        const interval = 1000;
 
         const timer = this.time.addEvent({
             delay: interval,
@@ -232,16 +231,16 @@ export class SceneBase extends Phaser.Scene
     }
 
     debugObjectRender() {
-        const objects = this.children.list.slice(); // clone to avoid modifying original list
+        const objects = this.children.list.slice(); // Clone to avoid modifying original list
 
-        // 1. Hide all
+        // 1. Hide all objects
         objects.forEach(obj => {
             if (typeof obj.setVisible === 'function') {
                 obj.setVisible(false);
             }
         });
 
-        // 2. Show one by one every 5 seconds
+        // 2. Show one by one every 1 second
         let index = 0;
         const interval = 1000;
 
@@ -264,14 +263,15 @@ export class SceneBase extends Phaser.Scene
             loop: true
         });
     }
-
+	
+	// Run on every frame update
     baseUpdate() {
-        // Update FPS
+        // Update FPS display
         if (this._fpsText) {
             const fps = Math.floor(this.game.loop.actualFps);
             this._fpsText.setText(`FPS:${fps}`);
         }
-        // Update Log
+        // Update log display
         if (this._debugText) {
             this._updateLog();
         }
@@ -284,7 +284,7 @@ export class SceneBase extends Phaser.Scene
             this._debugLogLevel = null;
             this._debugTimeStart = Math.floor(Date.now() / 1000);
         }
-        // Hide log if timeout
+        // Hide log if timeout exceeded
         if (this._debugTimeStart) {
             let crTime = Math.floor(Date.now() / 1000);
             if ((crTime - this._debugTimeStart) > this._debugTimeout) {
@@ -295,23 +295,19 @@ export class SceneBase extends Phaser.Scene
     }
 
     toHexColor(input) {
-        if (typeof input === 'number') {
-            return input; // already hex number
-        }
+        if (typeof input === 'number') return input;
 
         if (typeof input === 'string') {
             const str = input.trim().toLowerCase().replace(/^#/, '');
             const parsed = parseInt(str, 16);
-            if (!isNaN(parsed)) {
-                return parsed;
-            }
+            if (!isNaN(parsed)) return parsed;
         }
     }
 
     toStringColor(input) {
         if (typeof input === 'string') {
             if (/^#[0-9a-fA-F]{6}$/.test(input.trim())) {
-                return input.trim().toLowerCase(); // already valid
+                return input.trim().toLowerCase();
             }
 
             const str = input.trim().toLowerCase().replace(/^#/, '');
@@ -325,4 +321,48 @@ export class SceneBase extends Phaser.Scene
             return '#' + hex.toLowerCase();
         }
     }
+
+	// Display a toast message (like Android style)
+	showToast(message, duration = 3000) {
+		const width = this.scale.width;
+		const height = this.scale.height;
+
+		// Optional: dimmed background behind text
+		const background = this.add.rectangle(width / 2, height - 100, 500, 50, 0x000000, 0.7);
+		background.setOrigin(0.5);
+		background.setAlpha(0); // initially hidden
+		background.setDepth(1000);
+
+		// Toast text
+		const toastText = this.add.text(width / 2, height - 100, message, {
+			fontSize: '18px',
+			color: '#ffffff',
+			align: 'center',
+			fontFamily: 'Arial'
+		}).setOrigin(0.5);
+		toastText.setAlpha(0);
+		toastText.setDepth(1000);
+
+		// Animate toast in and out
+		this.tweens.add({
+			targets: [background, toastText],
+			alpha: 1,
+			duration: 300,
+			ease: 'Power2',
+			yoyo: false,
+			onComplete: () => {
+				this.time.delayedCall(duration, () => {
+					this.tweens.add({
+						targets: [background, toastText],
+						alpha: 0,
+						duration: 500,
+						onComplete: () => {
+							background.destroy();
+							toastText.destroy();
+						}
+					});
+				});
+			}
+		});
+	}
 }

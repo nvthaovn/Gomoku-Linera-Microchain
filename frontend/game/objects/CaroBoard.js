@@ -4,18 +4,13 @@ import { CaroAI } from '../CaroAI.js';
 export class CaroBoard extends Phaser.GameObjects.Container {
 	constructor(scene, x, y, rows, cols, cell_width, cell_height, color) {
 		super(scene, x, y);
-		scene.add.existing(this); // important: add to scene
+		scene.add.existing(this); 
 		this.scene = scene;
 		
 		this.cells = [];
 		this.aiCairo = new CaroAI(this.cells, this.cellClick.bind(this), rows, cols);
-		this.openTurn = "x"; // x - user's turn, o - AI's turn - x fist
-		this.last_pos = null; // save last move position to highlight
-		this.gamePlaying = true;
 		
-		//update user
-		this.player = this.scene.player;
-		this.gameMode = this.scene.gameMode;
+		
 		
 		const WIDTH = cell_width * cols;
 		const HEIGHT = cell_height * rows;
@@ -31,14 +26,74 @@ export class CaroBoard extends Phaser.GameObjects.Container {
 				this.add(cell);
 			}
 		}
+		
+		// Linera impliment
+		this.lastTurn = ""; // in AI Mode: x - user's turn, o - AI's turn
+		this.last_pos = null; // save last move position to highlight
+		this.gamePlaying = "";
+		this.player = this.scene.player; // "x" or "o"
+		this.gameMode = this.scene.gameMode;
+		//
+		if (this.gameMode != 3){
+			this.waitForGameStart();
+			this.handleEnemyTurn();
+		}
+		if(this.gameMode == 2){
+			this.lastTurn = "o";
+			this.gamePlaying="PLAYING";
+		}
+		if(this.gameMode == 3){
+			this.gamePlaying="PLAYING";
+		}
+	}
+	
+	//wait competitor
+	async handleEnemyTurn(){
+		window.linera.on(["Notification"],async () => {
+			this.scene.log("New event income...");
+			const gameInfo = await window.linera.checkGameInfo();
+			if (gameInfo.data.lastMove&&gameInfo.data.lastMove.player!=this.player) {
+				this.cellClick(gameInfo.data.lastMove.x, gameInfo.data.lastMove.y, gameInfo.data.lastMove.player);
+			}
+		});
+	}
+	
+	//wait competitor 
+	async waitForGameStart(){
+		const checkInterval = setInterval(async () => {
+			try {
+				const gameInfo = await window.linera.checkGameInfo();
+				this.scene.log("Checking game status...");
+				if (gameInfo.data.status == "PLAYING") {
+					this.gamePlaying = "PLAYING";
+					this.scene.showToast("The game has begun !");
+					clearInterval(checkInterval); 
+				}
+			} catch (error) {
+				console.error('Error checking game info:', error);
+			}
+		}, 5000); 
 	}
 	
 	// Handle user clicking on a cell
 	cellClick(x, y, value) {
-		console.log("click:", x, y, value, this.openTurn, this.cells[x][y].value);
-		if (!this.gamePlaying) return;
-
-		if (value == this.openTurn && this.cells[x][y].value == "") { // valid move: correct turn & empty cell
+		console.log("click:", x, y, value, this.lastTurn, this.cells[x][y].value);
+		if (this.gamePlaying=="FINISHED"){
+			console.log("game end !");
+			this.scene.showToast("Game end !");
+			return;
+		}
+		else if (this.gamePlaying!="PLAYING"){
+			console.log("game not ready");
+			this.scene.showToast("Game is not ready or no one has joined yet");
+			return;
+		}
+		//game ready
+		if( value == this.lastTurn ){
+			this.scene.showToast("It's not your turn !");
+			return;
+		}
+		if (this.cells[x][y].value == "") { //empty cell
 			// Clear previous move highlight
 			if (this.last_pos) {
 				this.cells[this.last_pos.x][this.last_pos.y].clearBackground();
@@ -47,26 +102,25 @@ export class CaroBoard extends Phaser.GameObjects.Container {
 			// Update cell value
 			this.cells[x][y].value = value;
 			this.cells[x][y].reStyle();
-			window.linera.moveStep(x,y,this.player);
+			if (this.gameMode != 3 && value==this.player){ //send new game step to microchain
+				window.linera.moveStep(x,y);
+			}
 			
 			// Switch turn
-			this.openTurn = value == "x" ? "o" : "x";
-			console.log("xxxxTurn", this.openTurn);
+			this.lastTurn = value;
 			
 			// Win check
 			let checkResult = this.checkWinnerAndDrawLine();
-			if (checkResult) return this.endGame(checkResult);
+			if(checkResult) this.endGame(checkResult);
+			
 			
 			// If user just played and game is not over, let AI make a move
-			if (value == "x"&& this.gameMode == 3) { //play vs AI
+			if (value==this.player&& this.gameMode == 3) { //play vs AI
 				this.aiCairo.nextMove(); // request AI to play
-			}
-			else if(value == this.player && this.gameMode != 3){
-				this.waitForGameTurn();
 			}
 			//competitor
 			if (value != this.player) {
-				// highlight AI's last move to help user identify
+				// highlight enemy's last move to help user identify
 				this.cells[this.last_pos.x][this.last_pos.y].setBackground(0x188f1a, 0.5);
 			}
 		}
@@ -145,16 +199,27 @@ export class CaroBoard extends Phaser.GameObjects.Container {
 		} else {
 			alert("You lose!");
 		}
-		this.gamePlaying = false;
-		this.endPopup();
+		this.gamePlaying = "FINISHED";
+		this.endPopup(result);
 	}
 	
 	// Display end-game popup
 	// #Todo
-	endPopup() {
+	endPopup(result) {
+		let endText = "You lose!";
+		if (result.winner == this.player) {
+			endText = "You win!";
+		}
+		//Endgame text
+		this.scene.add.text(700, 260, 'Game end! '+endText, {
+            fontFamily: 'Arial Black', fontSize: 38, color: '#ffffff',
+            stroke: '#000000', strokeThickness: 8,
+            align: 'center'
+        }).setOrigin(0.5);
+		
 		// "Play Again" button
 		const btn = this.scene.add.rectangle(650, 500, 200, 60, 0x4caf50).setInteractive();
-		const text = this.scene.add.text(650, 500, 'Play Again', {
+		const text = this.scene.add.text(650, 500, 'Go Home', {
 			fontSize: '24px',
 			color: '#ffffff',
 			fontFamily: 'Arial'
@@ -171,37 +236,10 @@ export class CaroBoard extends Phaser.GameObjects.Container {
 
 		// Handle click
 		btn.on('pointerdown', () => {
-			this.scene.scene.start('GameBoard');  // replace with your target scene
+			this.scene.scene.start('StartMenu');  // replace with your target scene
 		});
 	}
 	
-	//wait competitor
-	async waitForGameTurn(){
-		const checkInterval = setInterval(async () => {
-			try {
-				const gameInfo = await window.linera.checkGameInfo();
-				if (gameInfo.data.status != "None"&&gameInfo.data.lastMove.player!=this.player) {
-					clearInterval(checkInterval); 
-					this.cellClick(gameInfo.data.lastMove.x, gameInfo.data.lastMove.y, gameInfo.data.lastMove.player);
-				}
-			} catch (error) {
-				console.error('Error checking game info:', error);
-			}
-		}, 3000); 
-	}
 	
-	//wait competitor - #todo
-	async waitForGameStart(){
-		const checkInterval = setInterval(async () => {
-			try {
-				const gameInfo = await window.linera.checkGameInfo();
-				if (gameInfo.data.status != "None" && gameInfo.data.mode == "AI") {
-					clearInterval(checkInterval); 
-				}
-			} catch (error) {
-				console.error('Error checking game info:', error);
-			}
-		}, 5000); 
-	}
 	
 }

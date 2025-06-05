@@ -22,9 +22,12 @@ impl ServiceAbi for GomokuAbi {
 pub enum Operation {
     NewGame{ game_mode: u8 },
     JoinGame { host: ChainId },
-    Move { x: u8, y: u8 , player: String},
-    EndGame,
-	MicrochainJoinGame,
-    MicrochainReplyJoin { result: u8 },
-    MicrochainGameMove { x: u8, y: u8 },
+    Move { x: u8, y: u8},
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub enum CrossMessage {
+	JoinRequest,
+    JoinResult { result: u8 },
+    EnemyGameMove { x: u8, y: u8 },
 }

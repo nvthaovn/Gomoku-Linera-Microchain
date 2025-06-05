@@ -12,7 +12,7 @@ use linera_sdk::{
     Service, ServiceRuntime
 };
 
-use self::state::{GomokuState, GameMode, Step};
+use self::state::{GomokuState, GameMode, Step, GameStatus};
 
 #[derive(SimpleObject, Clone)] //param avaliable for query function
 pub struct QueryRoot {
@@ -20,8 +20,7 @@ pub struct QueryRoot {
     pub guest: Option<ChainId>,
 	pub mode: Option<GameMode>,
 	pub last_move: Option<Step>,
-	pub log: String,
-    pub status: String,
+    pub status: Option<GameStatus>,
     pub steps: Vec<Step>,
 }
 
@@ -50,14 +49,13 @@ impl Service for GomokuService {
     }
 	
     async fn handle_query(&self, query: Self::Query) -> Self::QueryResponse {
-        let query_data = QueryRoot {
-            host: *self.state.host.get(),
-            guest: *self.state.guest.get(),
-            status: format!("{:?}", *self.state.status.get()),
+        let query_data = QueryRoot { //Data return for query graph 
+            host: self.state.host.get().clone(),
+            guest: self.state.guest.get().clone(),
+            status: self.state.status.get().clone(),
             steps: self.state.steps.get().clone(),
 			mode: self.state.mode.get().clone(),
 			last_move: self.state.last_move.get().clone(),
-			log: self.state.log.get().clone().unwrap_or_default(),
         };
 
         Schema::build(
@@ -78,25 +76,34 @@ struct MutationRoot {
 }
 
 #[Object]
-impl MutationRoot {	 //param avaliable for mutation function
+impl MutationRoot {	 //param avaliable for mutation function (frontend call to backend)
 	async fn new_game(&self, game_mode:u8) -> bool {
         self.runtime.schedule_operation(&gomoku::Operation::NewGame { game_mode });
         true
     }
+	
+	/*
+	Flow :
+	Frontend JS
+	   ↓
+	Mutation (join_game)
+	   ↓
+	MutationRoot.join_game() - services.rs
+	   ↓
+	schedule_operation(Operation::JoinGame)
+	   ↓ 
+	contract.rs: execute_operation() - contract.rs
+	   ↓
+	match Operation::JoinGame => self.join_game(host).await
+	*/
 
     async fn join_game(&self, host: ChainId) -> bool {
-        //let host = host.parse().expect("Invalid ChainId format");
-        self.runtime.schedule_operation(&gomoku::Operation::JoinGame { host });
+        self.runtime.schedule_operation(&gomoku::Operation::JoinGame { host:host });
         true
     }
 
-    async fn move_step(&self, x: u8, y: u8, player: String) -> bool {
-        self.runtime.schedule_operation(&gomoku::Operation::Move { x, y, player });
-        true
-    }
-	
-	async fn end_game(&self) -> bool {
-        self.runtime.schedule_operation(&gomoku::Operation::EndGame);
+    async fn move_step(&self, x: u8, y: u8) -> bool {
+        self.runtime.schedule_operation(&gomoku::Operation::Move { x, y });
         true
     }
 }

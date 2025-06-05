@@ -1,5 +1,5 @@
 export class Cell extends Phaser.GameObjects.Container {
-	constructor(scene, x, y, width, height, row, col, clickCallback, color=0x00ccff) {
+	constructor(scene, x, y, width, height, row, col, clickCallback, color = 0x00ccff) {
 		super(scene, x, y);
 		this.value = "";
 		this.hover = false;
@@ -9,83 +9,82 @@ export class Cell extends Phaser.GameObjects.Container {
 		this.height = height;
 		this.scene = scene;
 
-		scene.add.existing(this); // quan trọng: thêm vào scene
+		scene.add.existing(this); // important: add to scene
 		
 		this.mark = null;
 		this.square = scene.add.graphics();
 	
-
-		// Cho phép tương tác với vùng hình vuông
+		// Enable interaction with the square area
 		this.square.setInteractive(new Phaser.Geom.Rectangle(0, 0, width, height), Phaser.Geom.Rectangle.Contains);
 
-		// 🖱️ Xử lý sự kiện CLICK
+		// 🖱️ Handle CLICK event
 		this.square.on('pointerdown', () => {
 			console.log('Clicked on cell');
-			clickCallback(row,col,this.scene.player);
+			clickCallback(row, col, this.scene.player);
 		});
 
-		// 🖱️ Xử lý sự kiện HOVER (mouseover)
+		// 🖱️ Handle HOVER (mouseover) event
 		this.square.on('pointerover', () => {
 			this.hover = true;
 			this.reStyle();
 		});
 
-		// 🐭 Trở lại màu cũ khi rời chuột
+		// 🐭 Revert color when mouse leaves
 		this.square.on('pointerout', () => {
 			this.hover = false;
 			this.reStyle();
 		});
-		//Apply
+
+		// Apply elements to container
 		this.add([this.square]);
 	}
 	
-	//Cập nhật trạng thái của ô
-	reStyle(){
-		if(this.value){
-			if(!this.mark){
-				if(this.value=="x"){
+	// Update the cell's visual state
+	reStyle() {
+		if (this.value) {
+			if (!this.mark) {
+				if (this.value == "x") {
 					this.clearBackground();
 					this.mark = this.scene.add.image(0, 0, 'markX')
-						.setDisplaySize(this.width, this.height)  // co dãn vừa khít
+						.setDisplaySize(this.width, this.height)  // stretch to fit
 						.setOrigin(0, 0);
 					this.add(this.mark);
-				}
-				else{
+				} else {
 					this.clearBackground();
 					this.mark = this.scene.add.image(0, 0, 'markO')
-						.setDisplaySize(this.width, this.height)  // co dãn vừa khít
+						.setDisplaySize(this.width, this.height)  // stretch to fit
 						.setOrigin(0, 0);
 					this.add(this.mark);
 				}
 			}
-		}
-		else if(this.hover){
-			this.setBackground(0xffcc00); // đổi màu khi hover
-		}
-		else{//Ô trống
+		} else if (this.hover) {
+			this.setBackground(0xffcc00); // change color on hover
+		} else {
+			// Empty cell
 			this.clearBackground();
 		}
 	}
 	
-	clearBackground(){
+	clearBackground() {
 		this.square.clear();
 	}
-	setBackground(color,opacity = 1){
+
+	setBackground(color, opacity = 1) {
 		this.clearBackground();
-		this.square.fillStyle(color,opacity); // đổi màu khi đánh X
+		this.square.fillStyle(color, opacity); // change color when marking X
 		this.square.fillRect(0, 0, this.width, this.height); 
 	}
-	
-	getCenter(){
-		console.log(this.x,this.y,this.width,this.height);
+
+	getCenter() {
+		console.log(this.x, this.y, this.width, this.height);
 		return {
-			x:this.x+this.width/2,
-			y:this.y+this.height/2
-		}
+			x: this.x + this.width / 2,
+			y: this.y + this.height / 2
+		};
 	}
 	
-	//đánh cờ cairo
-	mark(value){
+	// Make a move in the Cairo game
+	mark(value) {
 		this.value = value;
 		this.reStyle();
 	}

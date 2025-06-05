@@ -10,18 +10,22 @@ export class StartMenu extends SceneBase
     create ()
     {
 		//debug ui
-		this.showRuler();
+		//this.showRuler();
+		this.showFPS();
+		this.showLog();
 		
 		const bg = this.add.image(0, 0, 'background')
 			.setOrigin(0, 0) 
 			.setDisplaySize(this.scale.width, this.scale.height);
 
-        this.add.text(700, 260, 'Gomoku - Five in a row Game', {
+        const textLog = this.add.text(700, 260, 'Gomoku - Five in a row Game', {
             fontFamily: 'Arial Black', fontSize: 38, color: '#ffffff',
             stroke: '#000000', strokeThickness: 8,
             align: 'center'
         }).setOrigin(0.5);
 		
+		this.processing = false;
+		this.processInterval = null;
 		
 		// "Play Again" button
 		const newGameButton = this.add.rectangle(400, 370, 200, 60, 0x4caf50).setInteractive();
@@ -124,6 +128,7 @@ export class StartMenu extends SceneBase
 
 		// Join handler
 		joinBtn.on('pointerdown', async () => {
+			if(this.processing) return;
 			const inputEl = document.getElementById('chainInput');
 			const networkID = inputEl?.value?.trim();
 			if (!networkID) {
@@ -143,7 +148,7 @@ export class StartMenu extends SceneBase
 				this.time.delayedCall(500, () => {
 					overlay.destroy();
 					popup.destroy();
-					this.scene.start('GameBoard',{ player: '0', mode: 2 }); // Enter the game
+					this.scene.start('GameBoard',{ player: 'o', mode: 2 }); // Enter the game
 				});
 			} else {
 				loadingText.setText('Game is full!');
@@ -154,27 +159,29 @@ export class StartMenu extends SceneBase
 		closeBtn.on('pointerdown', () => {
 			overlay.destroy();
 			popup.destroy();
+			this.processing = false;
+			clearInterval(this.processInterval);
+			this.processInterval = null;
 		});
 	}
 	
 	async joinGame(chainID){
+		this.processing = true;
 		await window.linera.joinGame(chainID);
 		return new Promise((resolve, reject) => {
-			const checkInterval = setInterval(async () => {
+			this.processInterval = setInterval(async () => {
 				try {
 					const gameInfo = await window.linera.checkGameInfo();
-					console.log("cccccccccccc",gameInfo);
-
-					if (gameInfo.data.status == "Some(NotStarted)" || gameInfo.data.status == "Some(Playing)") {
-						clearInterval(checkInterval);
+					if (gameInfo.data.status == "PLAYING" || gameInfo.data.status == "JOINNING") {
+						clearInterval(this.processInterval);
 						resolve(true); // ✅
 					}
 					else if(gameInfo.data.status == "None"){
-						clearInterval(checkInterval);
+						clearInterval(this.processInterval);
 						resolve(false);
 					}
 				} catch (error) {
-					clearInterval(checkInterval);
+					clearInterval(this.processInterval);
 					reject(error); // ❌
 				}
 			}, 3000);
@@ -221,7 +228,8 @@ export class StartMenu extends SceneBase
 		
 		// Join handler
 		enterBtn.on('pointerdown', async () => {
-			loadingText.setText('Entering the game...');
+			if(this.processing) return;
+			loadingText.setText('Entering the game, please wait...');
 			//Check newgame created
 			const success = await this.checkGameOpened(); 
 			console.log(success);
@@ -236,6 +244,9 @@ export class StartMenu extends SceneBase
 		closeBtn.on('pointerdown', () => {
 			overlay.destroy();
 			popup.destroy();
+			this.processing = false;
+			clearInterval(this.processInterval);
+			this.processInterval = null;
 		});
 	}
 	
@@ -245,21 +256,18 @@ export class StartMenu extends SceneBase
 	}
 	
 	async checkGameOpened(){ //#Todo
+		this.processing = true;
 		return new Promise((resolve, reject) => {
-			const checkInterval = setInterval(async () => {
+			this.processInterval = setInterval(async () => {
 				try {
 					const gameInfo = await window.linera.checkGameInfo();
 
-					if (gameInfo.data.status == "Some(NotStarted)" || gameInfo.data.status == "Some(Playing)") {
-						clearInterval(checkInterval);
+					if (gameInfo.data.status == "NOT_STARTED" || gameInfo.data.status == "PLAYING") {
+						clearInterval(this.processInterval);
 						resolve(true); // ✅
 					}
-					else if(gameInfo.data.status == "None"){
-						clearInterval(checkInterval);
-						resolve(false);
-					}
 				} catch (error) {
-					clearInterval(checkInterval);
+					clearInterval(this.processInterval);
 					reject(error); // ❌
 				}
 			}, 3000);

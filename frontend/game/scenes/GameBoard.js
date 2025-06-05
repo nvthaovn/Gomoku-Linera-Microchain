@@ -14,12 +14,12 @@ export class GameBoard extends SceneBase
         this.gameMode = data.mode;
 	}
 
-	// Vẽ màn hình game
+	// 
     create ()
     {
 		//debug
 		//this.showGrid();
-		this.showRuler();
+		//this.showRuler();
 		this.showFPS();
 		this.showLog();
 		//
