@@ -91,9 +91,15 @@ You need a wallet address to deploy the application:
 ### 🌐 Frontend – Game Client
 
 1. **Run the local server**
+
    On Windows:
    ```bash
    ./frontend/runLocalServer.bat
+   ```
+   
+   On Mac/Linux:
+   ```bash
+   python3 ./frontend/localServer.py
    ```
 
 2. **Open the game in your browser**
